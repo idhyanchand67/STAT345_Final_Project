@@ -25,7 +25,7 @@ print(test)
 ## Section Three
 
 ```{r student3}
-SIX SEVEN
+RAWR
 ```
 
 
