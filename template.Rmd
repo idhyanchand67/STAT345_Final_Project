@@ -19,7 +19,8 @@ print(test)
 ## Section Two
 
 ```{r student2}
-
+test2 = 33.5 * 2
+print(test2)
 ```
 
 ## Section Three
