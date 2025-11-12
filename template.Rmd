@@ -48,6 +48,27 @@ ggplot(us_counties) +
 3. _Putting it Together_ Merge the county shape files with your county-level summaries. The main plot to create for the project is to color your map from step 1 based on the most common road suffix (summary from step 2). Beyond this plot, feel free to be creative when making at least two additional plots.
 
 ```{r student3}
+
+# install.packages(c("tigris", "sf", "ggplot2"))
+library(tigris)
+library(sf)
+library(ggplot2)
+
+options(tigris_use_cache = TRUE)
+
+# 1) Get all US counties as sf
+us_counties <- counties(cb = FALSE, class = "sf")  # detailed TIGER geometry
+
+# 2) Shift AK/HI/PR for a standard US layout (optional)
+us_counties_shift <- shift_geometry(us_counties, preserve_area = FALSE, position = "below")
+
+# 3) Plot with an equal-area CONUS projection (EPSG:5070)
+ggplot(us_counties_shift) +
+  geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
+  coord_sf(crs = 5070) +
+  theme_void()
+
+
 # install.packages(c("sf", "ggplot2"))6
 library(sf)
 library(ggplot2)
