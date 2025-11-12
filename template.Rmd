@@ -32,7 +32,23 @@ print(test2)
 3. _Putting it Together_ Merge the county shape files with your county-level summaries. The main plot to create for the project is to color your map from step 1 based on the most common road suffix (summary from step 2). Beyond this plot, feel free to be creative when making at least two additional plots.
 
 ```{r student3}
-RAWR5
+# install.packages(c("sf", "ggplot2"))
+library(sf)
+library(ggplot2)
+
+url <- "https://www2.census.gov/geo/tiger/TIGER2025/COUNTY/tl_2025_us_county.zip"
+td <- tempdir()
+zipfile <- file.path(td, "tl_2025_us_county.zip")
+download.file(url, zipfile, mode = "wb")
+unzip(zipfile, exdir = td)
+
+shp <- list.files(td, pattern = "tl_2025_us_county\\.shp$", full.names = TRUE)
+us_counties <- st_read(shp, quiet = TRUE)
+
+ggplot(us_counties) +
+  geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
+  theme_void()
+
 ```
 
 
