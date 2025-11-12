@@ -23,8 +23,24 @@ _Maps_ The US Census Bureau provides mapping shape files for a variety of variab
 2. _Roads_ Your goal in this step is to summarize (tabulate) the road suffixes for each county in the United States. County-level data can be found at [https://www2.census.gov/geo/tiger/TIGER2023/ROADS/](https://www2.census.gov/geo/tiger/TIGER2023/ROADS/). There are over 3000 files here, with file names that include the 5-digit GEOID for the county. As you process this data, you'll need to manage your memory in R. You'll likely want to download the file, unzip it, read it, summarize it, and then remove the file from memory. This is a great place for a function! Be sure to include the GEOID in your summary data for the next step.
 
 ```{r student2}
-test2 = 33.5 * 2
-print(test2)
+# install.packages(c("sf", "ggplot2"))6
+library(sf)
+library(ggplot2)
+
+url <- "https://www2.census.gov/geo/tiger/TIGER2025/COUNTY/tl_2025_us_county.zip"
+td <- tempdir()
+zipfile <- file.path(td, "tl_2025_us_county.zip")
+download.file(url, zipfile, mode = "wb")
+unzip(zipfile, exdir = td)
+
+shp <- list.files(td, pattern = "tl_2025_us_county\\.shp$", full.names = TRUE)
+us_counties <- st_read(shp, quiet = TRUE)
+```
+```{r}
+ggplot(us_counties) +
+  geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
+  theme_void()
+
 ```
 
 ## Section Three
