@@ -1,7 +1,7 @@
 ---
-title: "Super Awesome Project Template"
+title: "STAT 345 Address Final Project"
 output: word_document
-date: "2023-03-31"
+date: "2025-11-12"
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Section One
 
 ```{r student1}
-
+test = 6 + 7
+print(test)
 ```
 
 
