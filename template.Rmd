@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Section One
 
+_Maps_ The US Census Bureau provides mapping shape files for a variety of variables across the entire United States. You can explore these at [https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html). Make a map that displays county boundaries for the entire United States. You may use whichever package for plotting that you'd like, though you might find the 'ggmap' and 'rdgal' packages (and related tutorials) informative here.
+
 ```{r student1}
 test = 6 + 7
 print(test)
@@ -18,12 +20,16 @@ print(test)
 
 ## Section Two
 
+2. _Roads_ Your goal in this step is to summarize (tabulate) the road suffixes for each county in the United States. County-level data can be found at [https://www2.census.gov/geo/tiger/TIGER2023/ROADS/](https://www2.census.gov/geo/tiger/TIGER2023/ROADS/). There are over 3000 files here, with file names that include the 5-digit GEOID for the county. As you process this data, you'll need to manage your memory in R. You'll likely want to download the file, unzip it, read it, summarize it, and then remove the file from memory. This is a great place for a function! Be sure to include the GEOID in your summary data for the next step.
+
 ```{r student2}
 test2 = 33.5 * 2
 print(test2)
 ```
 
 ## Section Three
+
+3. _Putting it Together_ Merge the county shape files with your county-level summaries. The main plot to create for the project is to color your map from step 1 based on the most common road suffix (summary from step 2). Beyond this plot, feel free to be creative when making at least two additional plots.
 
 ```{r student3}
 
