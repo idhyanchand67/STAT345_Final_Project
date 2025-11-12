@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 _Maps_ The US Census Bureau provides mapping shape files for a variety of variables across the entire United States. You can explore these at [https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html). Make a map that displays county boundaries for the entire United States. You may use whichever package for plotting that you'd like, though you might find the 'ggmap' and 'rdgal' packages (and related tutorials) informative here.
 
 ```{r student1}
-
+67
 
 ```
 
