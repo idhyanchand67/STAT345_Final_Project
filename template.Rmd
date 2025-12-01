@@ -124,31 +124,282 @@ process_county_roads(zip_urls)
 3. _Putting it Together_ Merge the county shape files with your county-level summaries. The main plot to create for the project is to color your map from step 1 based on the most common road suffix (summary from step 2). Beyond this plot, feel free to be creative when making at least two additional plots.
 
 ```{r Blake}
-
-# install.packages(c("tigris", "sf", "ggplot2"))
+# ============================================================================
 library(tigris)
 library(sf)
 library(ggplot2)
 
+# - tigris: Downloads US Census TIGER/Line geographic data (counties, roads, etc.)
+# - sf: "Simple Features" package for working with spatial data (points, lines, polygons)
+
 options(tigris_use_cache = TRUE)
 
-# 1) Get all US counties as sf
-us_counties <- counties(cb = FALSE, class = "sf")  # detailed TIGER geometry
+# What it does:
+# - Tells tigris to CACHE (save locally) downloaded data
+# - Without this, every time you run the script, it re-downloads ~20 MB
+# - With caching enabled, 2nd run uses local copy (instant, saves bandwidth)
 
-# 2) Shift AK/HI/PR for a standard US layout (optional)
-us_counties_shift <- shift_geometry(us_counties, preserve_area = FALSE, position = "below")
 
-# 3) Plot with an equal-area CONUS projection (EPSG:5070)
-ggplot(us_counties_shift) +
+## SECTION 2: DOWNLOAD US COUNTY BOUNDARIES
+## ============================================================================
+us_counties <- counties(cb = FALSE, class = "sf")
+
+# What it does:
+# - counties() is a tigris function that downloads US county shapefile
+# - cb = FALSE: downloads DETAILED TIGER geometry (full county boundaries)
+#   * cb = TRUE would give simplified boundaries (faster but less detailed)
+#   * We use FALSE because we need precision for overlaying roads in Step 3
+# - class = "sf": returns data as sf (Simple Features) object (modern R spatial format)
+# 
+# Result stored in us_counties:
+# - 3,233 county polygons (one row per county)
+# - Columns: STATEFP, COUNTYFP, GEOID, NAME, geometry (the actual map boundary)
+
+# Remove any invalid or empty geometries
+us_counties <- st_make_valid(us_counties)
+us_counties <- us_counties[!st_is_empty(us_counties), ]
+
+# keep only 50 states + DC
+state_keep <- tigris::states(cb = TRUE) |> 
+  st_drop_geometry() |>
+  filter(!STUSPS %in% c("AS","GU","MP","PR","VI")) |>  # drop territories
+  pull(STATEFP)
+
+us_counties <- us_counties |> 
+  filter(STATEFP %in% state_keep)
+
+# What it does:
+# - st_make_valid(): Fixes any self-intersecting or invalid polygons (rare but happens)
+# - [!st_is_empty(us_counties), ]: Removes rows where geometry is empty
+
+
+## SECTION 3: PRINT PROGRESS & DATA SUMMARY
+## ============================================================================
+cat("✓ Downloaded ", nrow(us_counties), " county records\n", sep = "")
+
+# What it does:
+# - nrow(us_counties) counts how many counties (should be 3,233)
+# - sep = "" removes spaces between parts
+# 
+# Output example:
+# ✓ Downloaded 3233 county records
+
+cat("  Geometry type: ", unique(st_geometry_type(us_counties)), "\n", sep = "")
+
+# What it does:
+# - st_geometry_type() tells you what kind of shape each row is (POLYGON, MULTIPOLYGON, etc.)
+# - unique() shows only the distinct types (all should be POLYGON or MULTIPOLYGON)
+# 
+# Output example:
+# Geometry type: POLYGON
+
+
+## SECTION 4: SHIFT ALASKA, HAWAII, PUERTO RICO
+## ============================================================================
+us_counties_shift <- shift_geometry(us_counties, 
+                                    preserve_area = FALSE, 
+                                    position = "below")
+
+# What it does:
+# - shift_geometry() repositions AK, HI, PR from their true locations
+#   * TRUE LOCATIONS: Alaska is huge and far northwest; Hawaii is in Pacific
+#   * NEW LOCATIONS: Placed below continental US (inset boxes)
+# 
+# - preserve_area = FALSE: Allows resizing during shift (makes map more readable)
+# - position = "below": Places shifted territories BELOW the main map
+#
+# Why do this?
+# - If you map true locations, Alaska/Hawaii are tiny and far away
+# - Most of your map would be empty ocean
+# - This inset approach is standard for US maps 
+#
+# Result:
+# - Same county boundaries, but repositioned for better visualization
+
+
+## SECTION 5: CREATE DIRECTORIES FOR OUTPUTS
+## ============================================================================
+if (!dir.exists("data_raw")) dir.create("data_raw", recursive = TRUE)
+if (!dir.exists("data_processed")) dir.create("data_processed", recursive = TRUE)
+if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
+
+# What it does:
+# - !dir.exists("data_raw"): Checks if folder "data_raw" exists
+# - If FALSE (folder doesn't exist), then dir.create() makes it
+# - recursive = TRUE: Creates parent folders if needed (e.g., if "data" doesn't exist, creates it first)
+#
+# Why do this?
+# - Ensures your project has consistent folder structure for team collaboration
+# - Prevents error "cannot find directory" when saving files
+#
+# Result:
+# Three new folders appear in your project (if they don't already exist):
+# - data_raw/       (stores original downloads)
+# - data_processed/ (stores cleaned data for analysis)
+# - figures/        (stores final maps and plots)
+
+
+## SECTION 6: SAVE RAW DOWNLOAD TO CACHE
+## ============================================================================
+saveRDS(us_counties, "data_raw/counties_us_tiger.rds")
+
+# What it does:
+# - saveRDS() saves an R object as a .rds binary file
+# - us_counties: the data being saved
+# - "data_raw/counties_us_tiger.rds": file path and name
+#
+# Why do this?
+# - Next time you run this script, tigris will use cached version (instant)
+# - Backup: if tigris fails, you have local copy
+# - Sharing: teammates can load this instead of re-downloading
+#
+# File format: .rds is R's native binary format
+# - Smaller than CSV (compressed)
+# - Preserves all R object structure (columns, types, spatial info)
+
+
+## SECTION 7: CREATE THE MAP (ggplot2)
+## ============================================================================
+map_counties <- ggplot(us_counties_shift) +
   geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
   coord_sf(crs = 5070) +
-  theme_void()
+  theme_void() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, color = "gray40")
+  ) +
+  labs(
+    title = "United States County Boundaries",
+    subtitle = "TIGER/Line 2023 | n = 3,233 counties | EPSG:5070"
+  )
 
+# What it does (piece by piece):
+
+# ggplot(us_counties_shift)
+# - Starts a new ggplot2 plot using the shifted county boundaries
+# - us_counties_shift is the data (3,233 counties)
+
+# + geom_sf(fill = NA, color = "gray30", linewidth = 0.1)
+# - geom_sf(): special ggplot2 layer for spatial data (polygons, lines, points)
+# - fill = NA: Don't fill county interiors (keep transparent/empty)
+# - color = "gray30": Draw county borders in dark gray
+# - linewidth = 0.1: Make borders very thin (so they don't overpower the map)
+
+# + coord_sf(crs = 5070)
+# - coord_sf(): Set coordinate system (CRS) for the projection
+# - crs = 5070: Use EPSG:5070 (Albers Equal Area Conic - USGS standard)
+#   * This is a map PROJECTION: converts 3D Earth → 2D paper
+#   * 5070 minimizes distortion for continental US (true area representation)
+#   * (vs. lat/lon which distorts at high latitudes)
+
+# + theme_void()
+# - Removes all non-essential elements:
+#   * Removes axis labels, tick marks, grid lines, background
+#   * Creates clean, professional appearance
+
+# + theme(...)
+# - Fine-tunes specific theme elements:
+#   * plot.title: Centers title (hjust=0.5), bold, size 14
+#   * plot.subtitle: Centers subtitle, size 12, light gray
+
+# + labs(title = ..., subtitle = ...)
+# - Adds text labels to the map
+# - title: Main title (what the map shows)
+# - subtitle: Additional info (data source, number of records, projection)
+
+# Result: map_counties is now a ggplot2 object (the visual map)
+
+
+## SECTION 8: SAVE MAP AS PNG IMAGE
+## ============================================================================
+ggsave(
+  "figures/01_us_counties_base_map.png",
+  plot = map_counties,
+  width = 16,
+  height = 10,
+  dpi = 300,
+  units = "in"
+)
+
+# What it does:
+# - ggsave(): Saves ggplot2 object as an image file
+# - "figures/01_us_counties_base_map.png": where to save (filename and folder)
+# - plot = map_counties: which plot object to save
+# - width = 16, height = 10: Image dimensions (16 inches wide × 10 inches tall)
+# - dpi = 300: Resolution (dots per inch) - 300 is publication-quality
+# - units = "in": Measurements are in inches (not pixels or cm)
+#
+# Result: PNG file appears in figures/ folder
+# - File size: ~2-5 MB (high-res PNG)
+# - Quality: Perfect for reports, presentations, printing
+
+
+## SECTION 9: DISPLAY MAP IN RSTUDIO
+## ============================================================================
+print(map_counties)
+
+# What it does:
+# - Displays the map in RStudio's Viewer pane
+# - Allows you to see the result immediately without opening the PNG file
+# - Useful for checking if everything looks right before saving
+
+
+## SECTION 10: PROJECT TO STANDARD CRS & SAVE FOR STEP 2
+## ============================================================================
+us_counties_shift_proj <- st_transform(us_counties_shift, crs = 5070)
+
+# What it does:
+# - st_transform(): Converts/reprojects spatial data to a new CRS
+# - crs = 5070: Project to EPSG:5070 (same as what the map uses)
+# - Stores result in new object: us_counties_shift_proj
+#
+# Why do this?
+# - Ensures all team members use same CRS for Step 2 (road merging)
+# - Prevents geometry mismatches when combining counties with roads
+
+saveRDS(us_counties_shift_proj, "data_processed/counties_us_shift_5070.rds")
+
+# What it does:
+# - Saves the projected counties as .rds file
+# - Location: data_processed/ (because it's cleaned/ready for analysis)
+# - Filename: counties_us_shift_5070.rds indicates:
+#   * Shifted geometry (shifted = AK/HI/PR repositioned)
+#   * 5070 = CRS used (EPSG:5070)
+#
+# Why do this?
+# - Step 2 (road data) will LOAD this file and merge road info with it
+# - By saving here, Step 2 doesn't need to re-run Step 1
+
+
+## SECTION 11: FINAL SUMMARY & NEXT STEPS
+## ============================================================================
+cat("Step 1 Complete!\n")
+cat("========================================\n")
+cat("Summary:\n")
+cat("  • Total counties: ", nrow(us_counties), "\n", sep = "")
+cat("  • States: ", n_distinct(us_counties$STATEFP), "\n", sep = "")
+cat("  • CRS: EPSG:5070 (Albers Equal Area Conic - USGS Standard)\n")
+cat("  • Geometry: Detailed TIGER (cb=FALSE)\n")
+cat("  • Layout: Shifted (AK/HI/PR repositioned)\n")
+cat("  • Base map saved to: figures/01_us_counties_base_map.png\n\n")
+cat("Outputs ready for Step 2:\n")
+cat("  • data_processed/counties_us_shift_5070.rds\n\n")
+cat("Next: Begin Step 2 (Road Data Summarization)\n")
+cat("========================================\n")
+
+# What it does:
+# - Prints a nice summary to the console showing:
+#   * How many counties/states were processed
+#   * What CRS and geometry type were used
+#   * Where outputs were saved
+#   * Reminder of next step
+#
+# Why do this?
+# - Confirms script ran successfully
+# - Reminds you what was created
+# - Helps with debugging if something went wrong
 
 ```
-
-
-
 ## Section Four
 
 ```{r student4}
