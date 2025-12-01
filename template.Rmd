@@ -41,8 +41,84 @@ ggplot(us_counties) +
   geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
   theme_void()
 
-```
 
+```
+```{r}
+library(rvest)
+library(stringr)
+
+base_url <- "https://www2.census.gov/geo/tiger/TIGER2023/ROADS/"
+
+# Scrape the directory listing
+page <- read_html(base_url)
+
+# Extract only valid county road ZIPs
+zip_links <- page %>%
+  html_nodes("a") %>%
+  html_attr("href") %>%
+  na.omit() %>%
+  str_subset("^tl_2023_\\d{5}_roads\\.zip$")
+
+# Build full URLs
+zip_urls <- paste0(base_url, zip_links)
+
+head(zip_urls)
+
+test_url <- zip_urls[1]
+download.file(test_url, "test.zip", mode = "wb")
+unzip("test.zip", list = TRUE)   # check contents
+```
+```{r}
+library(sf)
+library(dplyr)
+
+process_county_roads <- function(url, outdir = "roads_temp") {
+  dir.create(outdir, showWarnings = FALSE)
+  geoid <- stringr::str_extract(basename(url), "\\d{5}")
+  
+  zipfile <- file.path(outdir, basename(url))
+  
+  # Download
+  tryCatch({
+    download.file(url, zipfile, mode = "wb", quiet = TRUE)
+  }, error = function(e) {
+    warning("Download failed for ", url)
+    return(NULL)
+  })
+  
+  # Skip if empty
+  if (!file.exists(zipfile) || file.size(zipfile) == 0) {
+    warning("Empty file for ", url)
+    return(NULL)
+  }
+  
+  # Unzip
+  unzip(zipfile, exdir = outdir)
+  
+  shp <- list.files(outdir, pattern = "\\.shp$", full.names = TRUE)
+  if (length(shp) == 0) {
+    warning("No shapefile found in ", zipfile)
+    return(NULL)
+  }
+  
+  # Read shapefile
+  roads <- st_read(shp[1], quiet = TRUE)
+  
+  # Summarize suffixes
+  suffixes <- roads %>%
+    st_drop_geometry() %>%
+    mutate(suffix = stringr::word(FULLNAME, -1)) %>%
+    count(suffix, name = "n") %>%
+    mutate(GEOID = geoid)
+  
+  # Clean up
+  unlink(list.files(outdir, full.names = TRUE))
+  gc()
+  
+  return(suffixes)
+}
+process_county_roads(zip_urls)
+```
 ## Section Three
 
 3. _Putting it Together_ Merge the county shape files with your county-level summaries. The main plot to create for the project is to color your map from step 1 based on the most common road suffix (summary from step 2). Beyond this plot, feel free to be creative when making at least two additional plots.
