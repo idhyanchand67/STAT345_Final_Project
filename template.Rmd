@@ -102,20 +102,44 @@ process_county_roads <- function(url, outdir = "roads_temp") {
   }
   
   # Read shapefile
-  roads <- st_read(shp[1], quiet = TRUE)
+  roads_sf <- st_read(shp[1], quiet = TRUE)
   
-  # Summarize suffixes
-  suffixes <- roads %>%
+  
+  #Suffixes to search for
+  road_suffixes <- c(
+    "St", "Ave", "Rd", "Blvd", "Ct", "Ln", "Dr", "Pl", "Way",
+    "Pkwy", "Ter", "Cir", "Loop", "Exn", "Byp", "Spr", "Hwy",
+    "County Road", "Co Rd", "State Rte", "Rte"
+ )
+
+  
+  # Clean numbers from road names
+  roads_clean <- roads_sf %>%
     st_drop_geometry() %>%
-    mutate(suffix = stringr::word(FULLNAME, -1)) %>%
+    mutate(FULLNAME_clean = str_replace_all(FULLNAME, "\\d+", ""),   # remove numbers
+           FULLNAME_clean = str_trim(FULLNAME_clean))
+  
+  extract_suffix <- function(name, suffix_list) {
+    # check if any suffix in the list is at the end of the string
+    matches <- suffix_list[str_detect(name, paste0("\\b", suffix_list, "$"))]
+    if(length(matches) > 0) return(matches[1])
+    return(NA)
+  }
+
+  roads_clean <- roads_clean %>%
+    rowwise() %>%
+    mutate(suffix = extract_suffix(FULLNAME_clean, road_suffixes)) %>%
+    ungroup() %>%
+    filter(!is.na(suffix)) %>%
     count(suffix, name = "n") %>%
     mutate(GEOID = geoid)
-  
+
   # Clean up
+  rm(roads_sf)
   unlink(list.files(outdir, full.names = TRUE))
   gc()
   
-  return(suffixes)
+  return(roads_clean)
 }
 process_county_roads(zip_urls)
 #
