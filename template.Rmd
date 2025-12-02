@@ -153,8 +153,13 @@ process_county_roads <- function(url, outdir = "roads_temp") {
   
   return(roads_clean)
 }
+
+#  Test code: 
+#  test_urls <- zip_urls[1:5]
+#  lapply(test_urls, process_county_roads)
+
 process_county_roads(zip_urls)
-#
+
 ```
 ## Section Three
 
