@@ -187,7 +187,7 @@ us_counties <- us_counties[!st_is_empty(us_counties), ]
 # keep only 50 states + DC
 state_keep <- tigris::states(cb = TRUE) |> 
   st_drop_geometry() |>
-  filter(!STUSPS %in% c("AS","GU","MP","PR","VI")) |>  # drop territories
+  filter(!STUSPS %in% c("AS","GU","MP","PR","VI", "AK", "HI")) |>  # drop territories and states not contiguous
   pull(STATEFP)
 
 us_counties <- us_counties |> 
@@ -423,6 +423,29 @@ cat("========================================\n")
 # - Confirms script ran successfully
 # - Reminds you what was created
 # - Helps with debugging if something went wrong
+
+```
+```{r}
+library(leaflet)
+
+# Convert counties to WGS84 (leaflet requires this)
+us_counties_wgs84 <- st_transform(us_counties_shift, crs = 4326)
+
+# Create interactive map
+map_leaflet <- leaflet(us_counties_wgs84) %>%
+  addTiles() %>%  # Add background map tiles (OpenStreetMap)
+  addPolygons(
+    color = "gray30",
+    weight = 0.5,
+    fillOpacity = 0.1,
+    popup = ~NAME  # Click county to see its name
+  )
+
+# Display
+map_leaflet
+
+
+
 
 ```
 ## Section Four
