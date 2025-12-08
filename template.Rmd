@@ -463,5 +463,11 @@ map_leaflet
 ## Section Four
 
 ```{r student4}
-
+library(sf)
+library(dplyr)
+library(tidyverse)
+unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
+shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
+hailData <- shp %>%
+  select(HAIL_RISKS,NRI_ID)
 ```
