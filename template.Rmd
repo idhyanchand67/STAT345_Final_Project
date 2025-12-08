@@ -466,8 +466,35 @@ map_leaflet
 library(sf)
 library(dplyr)
 library(tidyverse)
+library(leaflet)
+library(ggplot2)
 unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
 shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
 hailData <- shp %>%
   select(HAIL_RISKS,NRI_ID)
+
+hailData2 <- st_transform(hailData, crs = 4326)
+pal <- colorNumeric(
+  palette = c("white", "red"),   # gradient from white to red
+  domain = hailData2$HAIL_RISKS  # variable to map
+)
+
+# Build leaflet map
+map_leaflet <- leaflet(hailData2) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~pal(HAIL_RISKS),   # use palette function
+    color = "black",                # border color
+    weight = 0.5,
+    fillOpacity = 0.7,
+    popup = ~paste0(HAIL_RISKS)
+  ) %>%
+  addLegend(
+    pal = pal,
+    values = ~HAIL_RISKS,
+    title = "HAIL_RISKS"
+  )
+# Display
+map_leaflet
+
 ```
