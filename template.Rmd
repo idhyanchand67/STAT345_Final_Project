@@ -78,7 +78,7 @@ head(zip_urls)
 
 test_url <- zip_urls[1]
 download.file(test_url, "test.zip", mode = "wb")
-unzip("test.zip", list = TRUE)   # check contents
+unzip("test.zip", list = TRUE)   #  check contents
 ```
 ```{r}
 library(sf)
