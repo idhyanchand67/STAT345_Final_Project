@@ -475,36 +475,6 @@ library(leaflet)
 library(ggplot2)
 unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
 shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
-hailData <- shp %>%
-  select(HAIL_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
-  mutate(HAIL_RISKS = ifelse(HAIL_RISKS < 0, NA, HAIL_RISKS))
-
-
-
-hailData2 <- st_transform(hailData, crs = 4326)
-pal <- colorNumeric(
-  palette = c("white", "red"),   # gradient from white to red
-  domain = hailData$HAIL_RISKS  # variable to map
-)
-
-# Build leaflet map
-map_leaflet <- leaflet(hailData) %>%
-  addTiles() %>%
-  addPolygons(
-    fillColor = ~pal(HAIL_RISKS),   # use palette function
-    color = "black",                # border color
-    weight = 0.5,
-    fillOpacity = 0.7,
-    popup = ~paste0(HAIL_RISKS)
-  ) %>%
-  addLegend(
-    pal = pal,
-    values = ~HAIL_RISKS,
-    title = "HAIL_RISKS"
-  )
-# Display
-map_leaflet
-
 ```
 ```{r}
 
@@ -516,9 +486,20 @@ hailData <- st_transform(hailData, crs = 4326)
 ggplot(hailData) +
   geom_sf(aes(fill = HAIL_RISKS), color = "black", size = 0.1) +
   scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
-  theme_minimal() +
+  theme_void() +
   labs(title = "Hail Risk by County",
        fill = "Hail Risk")
-  
+
+tornadoData <- shp %>%
+  filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
+  select(TRND_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
+  mutate(TRND_RISKS = ifelse(TRND_RISKS < 0, NA, TRND_RISKS))
+tornadoData <- st_transform(tornadoData, crs = 4326)
+ggplot(tornadoData) +
+  geom_sf(aes(fill = TRND_RISKS), color = "black", size = 0.1) +
+  scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
+  theme_void() +
+  labs(title = "Tornado Risk By County",
+       fill = "Tornado Risk")
 
 ```
