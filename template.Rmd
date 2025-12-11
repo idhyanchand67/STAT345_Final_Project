@@ -474,32 +474,48 @@ library(tidyverse)
 library(leaflet)
 library(ggplot2)
 unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
+  #unzips the NRI data files. files from "https://hazards.fema.gov/nri/data-resources#shpDownload"
 shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
+  #reads the shape file in the zipped folder
 ```
 ```{r}
 
 hailData <- shp %>%
   filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
+    #filters out Hawaii, Alaska, and all us territories 
   select(HAIL_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
+    #Selects the hail risk data and some other useful info
   mutate(HAIL_RISKS = ifelse(HAIL_RISKS < 0, NA, HAIL_RISKS))
+    #Data set has any NA data as a value of -9999.000000 so this changes all of those values to 0
 hailData <- st_transform(hailData, crs = 4326) 
+  #transforms the shape data to a more map friendly format
 ggplot(hailData) +
   geom_sf(aes(fill = HAIL_RISKS), color = "black", size = 0.1) +
+    #adds county lines to the plot and sets the fill of the counties to Hail Risk value
   scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
+    #changes the fill to a gradient from light blue to dark red based on Hail Risk
   theme_void() +
   labs(title = "Hail Risk by County",
        fill = "Hail Risk")
+    #Adds titles
 
 tornadoData <- shp %>%
   filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
+    #filters out Hawaii, Alaska, and all us territories
   select(TRND_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
+    #Selects the tornado data and some other useful info
   mutate(TRND_RISKS = ifelse(TRND_RISKS < 0, NA, TRND_RISKS))
+    #Data set has any NA data as a value of -9999.000000 so this changes all of those values to 0
 tornadoData <- st_transform(tornadoData, crs = 4326)
+  #transforms the shape data to a more map friendly format
 ggplot(tornadoData) +
   geom_sf(aes(fill = TRND_RISKS), color = "black", size = 0.1) +
+    #adds county lines to the plot and sets the fill of the counties to Hail Risk value
   scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
+    #changes the fill to a gradient from light blue to dark red based on Hail Risk
   theme_void() +
   labs(title = "Tornado Risk By County",
        fill = "Tornado Risk")
+    #Adds titles
 
 ```
