@@ -42,12 +42,30 @@ process_county_roads <- function(geoid, state_fips, cache_dir = "data_raw/roads"
       return(NULL)
     }
     
+    # List of valid road suffixes to keep
+    valid_suffixes <- c(
+      "ALY","AVE","BLVD","BYU","BND","BR","BRG","BRK","BRKS","BG","BGS","BYP",
+      "CSWY","CTR","CTRS","CIR","CIRS","CLF","CLFS","COR","CORS","CRSE","CT",
+      "CTS","CV","CVS","CYN","DR","DRS","EST","ESTS","EXPY","EXT","EXTS","FALL",
+      "FLS","FRY","FRD","FRDS","FRG","FRGS","FWY","GDN","GDNS","GTWY","GLN",
+      "GLNS","GRN","GRNS","GRV","GRVS","HBR","HBRS","HVN","HTS","HWY","HL","HLS",
+      "HOLW","INLT","IS","ISS","JCT","JCTS","KNL","KNLS","LK","LKS","LN","LNDG",
+      "LOOP","MALL","MDW","MDWS","MEWS","ML","MLS","MTWY","MT","MTN","MTNS",
+      "NCK","OPAS","ORCH","OVAL","PARK","PKWY","PKWYS","PASS","PATH","PIKE",
+      "PL","PLN","PLNS","PLZ","PT","PTS","RADL","RAMP","RD","RDS","RIV","RUN",
+      "SHL","SHLS","SHR","SHRS","SKWY","SPG","SPGS","SPUR","SQ","SQS","ST",
+      "STA","STRA","STRM","STS","TER","TPKE","TRAK","TRL","TRLR","TUNL","UN",
+      "UNS","VLY","VLYS","VIA","VW","VWS","WALK","WAY","WAYS","WL","WLS"
+    )
+    
+    
     roads_sf <- roads_sf %>%
       mutate(
         SUFFIX = str_extract(FULLNAME, "\\b\\w+$"),
         SUFFIX = str_to_upper(SUFFIX)
       ) %>%
-      filter(!is.na(SUFFIX), SUFFIX != "")
+      filter(SUFFIX %in% valid_suffixes)  # Only keep valid suffixes
+    
     
     suffix_counts <- roads_sf %>%
       st_drop_geometry() %>%

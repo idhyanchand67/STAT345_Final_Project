@@ -13,7 +13,7 @@ library(sf)
 library(dplyr)
 
 cat("Loading shared functions from 02_process_roads_function.R...\n\n")
-source("R/02_process_roads_function.R")
+source("02_process_roads_function.R")
 
 cat("Loading counties data from Step 1...\n")
 counties_df <- readRDS("data_processed/counties_us_shift_5070.rds")
