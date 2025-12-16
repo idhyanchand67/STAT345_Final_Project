@@ -2,27 +2,36 @@
 title: "STAT 345 Address Final Project"
 output: word_document
 date: "2025-11-12"
+authors: "Isaac Dhyanchand, Blake Guilette, James Jegier"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Section One
+## Introduction
 
-_Maps_ The US Census Bureau provides mapping shape files for a variety of variables across the entire United States. You can explore these at [https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html). Make a map that displays county boundaries for the entire United States. You may use whichever package for plotting that you'd like, though you might find the 'ggmap' and 'rdgal' packages (and related tutorials) informative here.
-```{r, Blake}
+The purpose of this project is to explore how address-related geographic features vary across the United States at the county level. Using publicly available spatial data from the U.S. Census Bureau, we first constructed a complete county boundary map of the United States. We then summarized road suffixes by county. Finally, we merged these summaries back into the county map and produced visualizations that highlight geographic patterns in road naming and related county-level characteristics. Throughout the project, we focused on making readable code, building time-efficient functions, and building collaborative coding skills.
 
+## Data Sources
+
+All primary spatial data used in this project comes from publicly available government sources. County boundary shapefiles were obtained from the U.S. Census Bureau’s TIGER/Line products, accessed both through direct downloads and the tigris R package (https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html). Road-level data were sourced from the TIGER/Line ROADS directory (https://www2.census.gov/geo/tiger/TIGER2023/ROADS/), which provides individual shapefiles for each U.S. county identified by a five-digit GEOID. For additional visualizations, county-level hazard risk data were obtained from FEMA’s National Risk Index shapefiles (https://hazards.fema.gov/nri/data-resources#shpDownload). These datasets were chosen because they are well-documented and widely used,
+
+## Step 1: Mapping U.S. County Boundaries
+
+The first step in the analysis was to create a base map that displays county boundaries for the entire United States. We used detailed TIGER/Line county shapefiles and processed them using the sf package. To ensure an appropriate size for our map, the data was transformed, removing non-continental territories to maintain a consistent geographic scope. This county map serves as the spatial foundation for all of our analysis and visualization. The code for this is below.
+
+```{r}
 library(tigris)
 library(sf)
 library(ggplot2)
+library(tidyverse)
 
 # - tigris: Downloads US Census TIGER/Line geographic data (counties, roads, etc.)
 # - sf: "Simple Features" package for working with spatial data (points, lines, polygons)
 
 options(tigris_use_cache = TRUE)
 # - Tells tigris to CACHE (save locally) downloaded data
-
 
 
 # Download U.s.County Boundries
@@ -129,45 +138,61 @@ cat("  • Base map saved to: figures/01_us_counties_base_map.png\n\n")
 cat("  • data_processed/counties_us_shift_5070.rds\n\n")
 
 ```
-```{r Isaac}
-base_url <- "https://www2.census.gov/geo/tiger/TIGER2023/ROADS"
-url <- file.path(base_url, zip_links[[1]])  # now it's a full URL
-outdir <- "roads_temp"
-dir.create(outdir, showWarnings = FALSE)
-
-geoid <- stringr::str_extract(basename(url), "\\d{5}")
-zipfile <- file.path(outdir, basename(url))
-
-download.file(url, zipfile, mode = "wb", quiet = TRUE)
-unzip(zipfile, exdir = outdir)
-
-shp <- list.files(outdir, pattern = "\\.shp$", full.names = TRUE)
-roads_sf <- sf::st_read(shp[1], quiet = TRUE)
-```
 
 
+## Step 2: County-Level Road Suffix Summaries
 
-## Section Two
+In this step, we summarized road suffix usage for each county using TIGER/Line road shapefiles. Because road data are provided separately for each county, loading all counties at once was not practical, so the data were processed one county at a time. We created a function to download the road file for a county, extract road name information, and compute suffix counts, and then ran this function across three separate scripts, each responsible for a different region of the United States. To reduce runtime, the analysis was limited to a predefined set of official TIGER/Line road suffixes, and suffixes were only matched when they appeared at the end of cleaned road names. The resulting county-level suffix counts, identified by county GEOID, were then combined into a single national dataset in a separate script, where the most frequently used suffix for each county was determined.
 
-2. _Roads_ Your goal in this step is to summarize (tabulate) the road suffixes for each county in the United States. County-level data can be found at [https://www2.census.gov/geo/tiger/TIGER2023/ROADS/](https://www2.census.gov/geo/tiger/TIGER2023/ROADS/). There are over 3000 files here, with file names that include the 5-digit GEOID for the county. As you process this data, you'll need to manage your memory in R. You'll likely want to download the file, unzip it, read it, summarize it, and then remove the file from memory. This is a great place for a function! Be sure to include the GEOID in your summary data for the next step.
+```{r eval=FALSE}
+# Example of county-level road processing
+source("02_process_roads_function.R")
 
-```{r James}
-
+# Run processing for a set of counties (executed in regional scripts)
+process_county_roads("55079")
 
 ```
-## Section Three
+## Merging Data and Visualization
 
-3. _Putting it Together_ Merge the county shape files with your county-level summaries. The main plot to create for the project is to color your map from step 1 based on the most common road suffix (summary from step 2). Beyond this plot, feel free to be creative when making at least two additional plots.
+In this step, the county-level road suffix summaries were merged with county boundary shape files using the GEOID as a common identifier. This combined dataset allowed us to create a map of the contiguous United States, where each county is colored according to its most common road suffix. The visualization highlights spatial patterns in road naming and demonstrates how attribute data can be integrated with geographic boundaries to produce a clear, interpretable map.
 
-## Section Four
+```{r, eval = TRUE}
+counties_us_shift_5070 <- readRDS("data_processed/counties_us_shift_5070.rds")
+suf <- read.csv("road_suffixes_most_common.csv")
+suf$GEOID <- as.numeric(suf$GEOID)
+counties_us_shift_5070$GEOID <- as.numeric(counties_us_shift_5070$GEOID)
+com <- left_join(counties_us_shift_5070, suf, by = "GEOID")
+roadPlot <- ggplot(com) +
+  geom_sf(aes(fill = SUFFIX), color = "black", size = 0.1)+
+  theme_void()+
+  labs(fill = "Most Common Road Suffix",
+       title = "Most Common Road Suffix By County")
+  
+ggsave(
+  "roadData.png",
+  plot = roadPlot,
+  width = 16,
+  height = 10,
+  dpi = 300,
+  units = "in"
+)
 
-```{r student4}
+print(roadPlot)
+```
+
+## FEMA Hazard Risk Maps
+
+To demonstrate the flexibility of the spatial framework, we also visualized county-level hazard risk data from FEMA’s National Risk Index. Unlike the road suffix data, this workflow uses a single shapefile containing all counties. We filtered out non-contiguous territories and Alaska/Hawaii, selected relevant hazard columns, replaced placeholder missing values with NA, and reprojected the shapefile for plotting. Separate maps were created for hail and tornado risk by county, using a gradient fill to represent risk values. These maps illustrate that the same geographic framework can be reused for multiple datasets.
+
+```{r}
 library(sf)
 library(dplyr)
 library(tidyverse)
 library(leaflet)
 library(ggplot2)
+
 # Zip file gotten from "https://hazards.fema.gov/nri/data-resources#shpDownload". Use the "All Counties - County-level detail (Shapefile)" data set
+
 unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
   #unzips the zip file containing the shape files and creates a temporary directory to read from
 shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
@@ -236,23 +261,7 @@ ggsave(
 
 ```
 
-```{r}
-suf <- read.csv("road_suffixes_most_common.csv")
-suf$GEOID <- as.numeric(suf$GEOID)
-counties_us_shift_5070$GEOID <- as.numeric(counties_us_shift_5070$GEOID)
-com <- left_join(counties_us_shift_5070, suf, by = "GEOID")
-roadPlot <- ggplot(com) +
-  geom_sf(aes(fill = SUFFIX), color = "black", size = 0.1)+
-  theme_void()+
-  labs(fill = "Most Common Road Suffix",
-       title = "Most Common Road Suffix By County")
-  
-ggsave(
-  "roadData.png",
-  plot = roadPlot,
-  width = 16,
-  height = 10,
-  dpi = 300,
-  units = "in"
-)
-```
+## Conclusion
+
+This project shows how publicly available spatial data can be worked with and visualized in R. We processed TIGER/Line road data county by county to figure out the most common road suffixes, and we also mapped FEMA hazard data directly from a single shapefile. Using consistent geographic identifiers and careful data handling made it possible to create clear, reproducible maps that show patterns across the U.S.
+
