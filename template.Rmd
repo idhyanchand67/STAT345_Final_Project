@@ -500,5 +500,5 @@ ggplot(tornadoData) +
   theme_void() +
   labs(title = "Tornado Risk By County",
        fill = "Tornado Risk")
-    #Adds titles
+    #Adds titles to plot
 ```
