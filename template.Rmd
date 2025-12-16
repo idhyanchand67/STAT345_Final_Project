@@ -11,7 +11,234 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Section One
 
 _Maps_ The US Census Bureau provides mapping shape files for a variety of variables across the entire United States. You can explore these at [https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html). Make a map that displays county boundaries for the entire United States. You may use whichever package for plotting that you'd like, though you might find the 'ggmap' and 'rdgal' packages (and related tutorials) informative here.
+```{r}
+ ============================================================================
+library(tigris)
+library(sf)
+library(ggplot2)
 
+# - tigris: Downloads US Census TIGER/Line geographic data (counties, roads, etc.)
+# - sf: "Simple Features" package for working with spatial data (points, lines, polygons)
+
+options(tigris_use_cache = TRUE)
+
+# What it does:
+# - Tells tigris to CACHE (save locally) downloaded data
+# - Without this, every time you run the script, it re-downloads ~20 MB
+# - With caching enabled, 2nd run uses local copy 
+
+
+## Download U.s.County Boundries
+## ============================================================================
+us_counties <- counties(cb = FALSE, class = "sf")
+
+# - counties() is a tigris function that downloads US county shapefile
+# - cb = FALSE: downloads DETAILED TIGER geometry (full county boundaries)
+# 
+# Result stored in us_counties:
+# - 3,233 county polygons (one row per county)
+# - Columns: STATEFP, COUNTYFP, GEOID, NAME, geometry (the actual map boundary)
+
+# Remove any invalid or empty geometries
+us_counties <- st_make_valid(us_counties)
+us_counties <- us_counties[!st_is_empty(us_counties), ]
+
+# keep only contiguous US
+state_keep <- tigris::states(cb = TRUE) |> 
+  st_drop_geometry() |>
+  filter(!STUSPS %in% c("AS","GU","MP","PR","VI", "AK", "HI")) |>  # drop territories and states not contiguous
+  pull(STATEFP)
+
+us_counties <- us_counties |> 
+  filter(STATEFP %in% state_keep)
+
+# - st_make_valid(): Fixes any self-intersecting or invalid polygons 
+# - [!st_is_empty(us_counties), ]: Removes rows where geometry is empty
+
+# Print prgress and data
+cat("✓ Downloaded ", nrow(us_counties), " county records\n", sep = "")
+
+
+cat("  Geometry type: ", unique(st_geometry_type(us_counties)), "\n", sep = "")
+
+
+# - st_geometry_type() tells you what kind of shape each row is (POLYGON, MULTIPOLYGON, etc.)
+# - unique() shows only the distinct types (all should be POLYGON or MULTIPOLYGON)
+
+
+
+# was used to shift the states that weren't contiguous but we aren't doing that anymore
+us_counties_shift <- us_counties
+
+
+# create directories for outputs
+if (!dir.exists("data_raw")) dir.create("data_raw", recursive = TRUE)
+if (!dir.exists("data_processed")) dir.create("data_processed", recursive = TRUE)
+if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
+
+
+# - !dir.exists("data_raw"): Checks if folder "data_raw" exists
+# - If FALSE (folder doesn't exist), then dir.create() makes it
+# - recursive = TRUE: Creates parent folders if needed 
+#
+# - Ensures your project has consistent folder structure for team collaboration
+# - Prevents error "cannot find directory" when saving files
+#
+# Result:
+# Three new folders appear in your project (if they don't already exist):
+# - data_raw/       (stores original downloads)
+# - data_processed/ (stores cleaned data for analysis)
+# - figures/        (stores final maps and plots)
+
+
+# Save Raw data
+saveRDS(us_counties, "data_raw/counties_us_tiger.rds")
+
+# - Next time this script is ran, tigris will use cached version 
+# File format: .rds is R's native binary format
+# - Smaller than CSV (compressed)
+# - Preserves all R object structure (columns, types, spatial info)
+
+
+# Create Map 
+map_counties <- ggplot(us_counties_shift) +
+  geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
+  coord_sf(crs = 5070) +   #
+  theme_void() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, color = "gray40")
+  ) +
+  labs(
+    title = "United States County Boundaries",
+    subtitle = "TIGER/Line 2023 | n = 3,233 counties | EPSG:5070"
+  )
+
+# What it does (piece by piece):
+
+# ggplot(us_counties_shift)
+# - Starts a new ggplot2 plot using the data
+
+# + geom_sf(fill = NA, color = "gray30", linewidth = 0.1)
+# - geom_sf(): special ggplot2 layer for spatial data (polygons, lines, points)
+# - fill = NA: Don't fill county interiors (keep transparent/empty)
+# - color = "gray30": Draw county borders in dark gray
+# - linewidth = 0.1: Make borders very thin (so they don't overpower the map)
+
+# + coord_sf(crs = 5070)
+# - coord_sf(): Set coordinate system (CRS) for the projection
+# - crs = 5070: Use EPSG:5070 (Albers Equal Area Conic - USGS standard)
+#   * This is a map PROJECTION: converts 3D Earth → 2D paper
+#   * 5070 minimizes distortion for continental US (true area representation)
+#   * (vs. lat/lon which distorts at high latitudes)
+
+# + theme_void()
+# - Removes all non-essential elements:
+#   * Removes axis labels, tick marks, grid lines, background
+#   * Creates clean, professional appearance
+
+# + theme(...)
+# - Fine-tunes specific theme elements:
+#   * plot.title: Centers title (hjust=0.5), bold, size 14
+#   * plot.subtitle: Centers subtitle, size 12, light gray
+
+# + labs(title = ..., subtitle = ...)
+# - Adds text labels to the map
+# - title: Main title (what the map shows)
+# - subtitle: Additional info (data source, number of records, projection)
+
+# Result: map_counties is now a ggplot2 object (the visual map)
+
+
+# Save Map as png
+ggsave(
+  "figures/01_us_counties_base_map.png",
+  plot = map_counties,
+  width = 16,
+  height = 10,
+  dpi = 300,
+  units = "in"
+)
+
+# What it does:
+# - ggsave(): Saves ggplot2 object as an image file
+# - "figures/01_us_counties_base_map.png": where to save (filename and folder)
+# - plot = map_counties: which plot object to save
+# - width = 16, height = 10: Image dimensions (16 inches wide × 10 inches tall)
+# - dpi = 300: Resolution (dots per inch) - 300 is publication-quality
+# - units = "in": Measurements are in inches (not pixels or cm)
+#
+# Result: PNG file appears in figures/ folder
+# - File size: ~2-5 MB (high-res PNG)
+# - Quality: Perfect for reports, presentations, printing
+
+
+## SECTION 9: DISPLAY MAP IN RSTUDIO
+## ============================================================================
+print(map_counties)
+
+# What it does:
+# - Displays the map in RStudio's Viewer pane
+# - Allows you to see the result immediately without opening the PNG file
+# - Useful for checking if everything looks right before saving
+
+
+## SECTION 10: PROJECT TO STANDARD CRS & SAVE FOR STEP 2
+## ============================================================================
+us_counties_shift_proj <- st_transform(us_counties_shift, crs = 5070)
+
+# What it does:
+# - st_transform(): Converts/reprojects spatial data to a new CRS
+# - crs = 5070: Project to EPSG:5070 (same as what the map uses)
+# - Stores result in new object: us_counties_shift_proj
+#
+# Why do this?
+# - Ensures all team members use same CRS for Step 2 (road merging)
+# - Prevents geometry mismatches when combining counties with roads
+
+saveRDS(us_counties_shift_proj, "data_processed/counties_us_shift_5070.rds")
+
+# What it does:
+# - Saves the projected counties as .rds file
+# - Location: data_processed/ (because it's cleaned/ready for analysis)
+# - Filename: counties_us_shift_5070.rds indicates:
+#   * Shifted geometry (shifted = AK/HI/PR repositioned)
+#   * 5070 = CRS used (EPSG:5070)
+#
+# Why do this?
+# - Step 2 (road data) will LOAD this file and merge road info with it
+# - By saving here, Step 2 doesn't need to re-run Step 1
+
+
+## SECTION 11: FINAL SUMMARY & NEXT STEPS
+## ============================================================================
+cat("Step 1 Complete!\n")
+cat("========================================\n")
+cat("Summary:\n")
+cat("  • Total counties: ", nrow(us_counties), "\n", sep = "")
+cat("  • States: ", n_distinct(us_counties$STATEFP), "\n", sep = "")
+cat("  • CRS: EPSG:5070 (Albers Equal Area Conic - USGS Standard)\n")
+cat("  • Geometry: Detailed TIGER (cb=FALSE)\n")
+cat("  • Layout: Shifted (AK/HI/PR repositioned)\n")
+cat("  • Base map saved to: figures/01_us_counties_base_map.png\n\n")
+cat("Outputs ready for Step 2:\n")
+cat("  • data_processed/counties_us_shift_5070.rds\n\n")
+cat("Next: Begin Step 2 (Road Data Summarization)\n")
+cat("========================================\n")
+
+# What it does:
+# - Prints a nice summary to the console showing:
+#   * How many counties/states were processed
+#   * What CRS and geometry type were used
+#   * Where outputs were saved
+#   * Reminder of next step
+#
+# Why do this?
+# - Confirms script ran successfully
+# - Reminds you what was created
+# - Helps with debugging if something went wrong
+
+```
 ```{r Isaac}
 base_url <- "https://www2.census.gov/geo/tiger/TIGER2023/ROADS"
 url <- file.path(base_url, zip_links[[1]])  # now it's a full URL
@@ -35,130 +262,7 @@ roads_sf <- sf::st_read(shp[1], quiet = TRUE)
 2. _Roads_ Your goal in this step is to summarize (tabulate) the road suffixes for each county in the United States. County-level data can be found at [https://www2.census.gov/geo/tiger/TIGER2023/ROADS/](https://www2.census.gov/geo/tiger/TIGER2023/ROADS/). There are over 3000 files here, with file names that include the 5-digit GEOID for the county. As you process this data, you'll need to manage your memory in R. You'll likely want to download the file, unzip it, read it, summarize it, and then remove the file from memory. This is a great place for a function! Be sure to include the GEOID in your summary data for the next step.
 
 ```{r James}
-# install.packages(c("sf", "ggplot2"))
-library(sf)
-library(ggplot2)
 
-url <- "https://www2.census.gov/geo/tiger/TIGER2025/COUNTY/tl_2025_us_county.zip"
-td <- tempdir()
-zipfile <- file.path(td, "tl_2025_us_county.zip")
-download.file(url, zipfile, mode = "wb")
-unzip(zipfile, exdir = td)
-
-shp <- list.files(td, pattern = "tl_2025_us_county\\.shp$", full.names = TRUE)
-us_counties <- st_read(shp, quiet = TRUE)
-```
-```{r}
-ggplot(us_counties) +
-  geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
-  theme_void()
-
-
-```
-```{r}
-library(rvest)
-library(stringr)
-
-base_url <- "https://www2.census.gov/geo/tiger/TIGER2023/ROADS/"
-
-# Scrape the directory listing
-page <- read_html(base_url)
-
-# Extract only valid county road ZIPs
-zip_links <- page %>%
-  html_nodes("a") %>%
-  html_attr("href") %>%
-  na.omit() %>%
-  str_subset("^tl_2023_\\d{5}_roads\\.zip$")
-
-# Build full URLs
-zip_urls <- paste0(base_url, zip_links)
-
-head(zip_urls)
-
-test_url <- zip_urls[1]
-download.file(test_url, "test.zip", mode = "wb")
-unzip("test.zip", list = TRUE)   #  check contents
-```
-```{r}
-library(sf)
-library(dplyr)
-
-process_county_roads <- function(url, outdir = "roads_temp") {
-  dir.create(outdir, showWarnings = FALSE)
-  geoid <- stringr::str_extract(basename(url), "\\d{5}")
-  
-  zipfile <- file.path(outdir, basename(url))
-  
-  # Download
-  tryCatch({
-    download.file(url, zipfile, mode = "wb", quiet = TRUE)
-  }, error = function(e) {
-    warning("Download failed for ", url)
-    return(NULL)
-  })
-  
-  # Skip if empty
-  if (!file.exists(zipfile) || file.size(zipfile) == 0) {
-    warning("Empty file for ", url)
-    return(NULL)
-  }
-  
-  # Unzip
-  unzip(zipfile, exdir = outdir)
-  
-  shp <- list.files(outdir, pattern = "\\.shp$", full.names = TRUE)
-  if (length(shp) == 0) {
-    warning("No shapefile found in ", zipfile)
-    return(NULL)
-  }
-  
-  # Read shapefile
-  roads_sf <- st_read(shp[1], quiet = TRUE)
-  
-  
-  #Suffixes to search for
-  road_suffixes <- c(
-    "St", "Ave", "Rd", "Blvd", "Ct", "Ln", "Dr", "Pl", "Way",
-    "Pkwy", "Ter", "Cir", "Loop", "Exn", "Byp", "Spr", "Hwy",
-    "County Road", "Co Rd", "State Rte", "Rte"
- )
-
-  
-  # Clean numbers from road names
-  roads_clean <- roads_sf %>%
-    st_drop_geometry() %>%
-    mutate(FULLNAME_clean = str_replace_all(FULLNAME, "\\d+", ""),   # remove numbers
-           FULLNAME_clean = str_trim(FULLNAME_clean))
-  
-  extract_suffix <- function(name, suffix_list) {
-    # check if any suffix in the list is at the end of the string
-    matches <- suffix_list[str_detect(name, paste0("\\b", suffix_list, "$"))]
-    if(length(matches) > 0) return(matches[1])
-    return(NA)
-  }
-
-  roads_clean <- roads_clean %>%
-    rowwise() %>%
-    mutate(suffix = extract_suffix(FULLNAME_clean, road_suffixes)) %>%
-    ungroup() %>%
-    filter(!is.na(suffix)) %>%
-    count(suffix, name = "n") %>%
-    mutate(GEOID = geoid)
-
-  # Clean up
-  rm(roads_sf)
-  unlink(list.files(outdir, full.names = TRUE))
-  gc()
-  
-  return(roads_clean)
-}
-
-#  Test code: 
-#  test_urls <- zip_urls[1:5]
-#  lapply(test_urls, process_county_roads)
-
-process_county_roads(zip_urls)
 
 ```
 ## Section Three
