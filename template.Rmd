@@ -179,19 +179,15 @@ options(tigris_use_cache = TRUE)
 # What it does:
 # - Tells tigris to CACHE (save locally) downloaded data
 # - Without this, every time you run the script, it re-downloads ~20 MB
-# - With caching enabled, 2nd run uses local copy (instant, saves bandwidth)
+# - With caching enabled, 2nd run uses local copy 
 
 
-## SECTION 2: DOWNLOAD US COUNTY BOUNDARIES
+## Download U.s.County Boundries
 ## ============================================================================
 us_counties <- counties(cb = FALSE, class = "sf")
 
-# What it does:
 # - counties() is a tigris function that downloads US county shapefile
 # - cb = FALSE: downloads DETAILED TIGER geometry (full county boundaries)
-#   * cb = TRUE would give simplified boundaries (faster but less detailed)
-#   * We use FALSE because we need precision for overlaying roads in Step 3
-# - class = "sf": returns data as sf (Simple Features) object (modern R spatial format)
 # 
 # Result stored in us_counties:
 # - 3,233 county polygons (one row per county)
@@ -201,7 +197,7 @@ us_counties <- counties(cb = FALSE, class = "sf")
 us_counties <- st_make_valid(us_counties)
 us_counties <- us_counties[!st_is_empty(us_counties), ]
 
-# keep only 50 states + DC
+# keep only contiguous US
 state_keep <- tigris::states(cb = TRUE) |> 
   st_drop_geometry() |>
   filter(!STUSPS %in% c("AS","GU","MP","PR","VI", "AK", "HI")) |>  # drop territories and states not contiguous
@@ -210,49 +206,35 @@ state_keep <- tigris::states(cb = TRUE) |>
 us_counties <- us_counties |> 
   filter(STATEFP %in% state_keep)
 
-# What it does:
-# - st_make_valid(): Fixes any self-intersecting or invalid polygons (rare but happens)
+# - st_make_valid(): Fixes any self-intersecting or invalid polygons 
 # - [!st_is_empty(us_counties), ]: Removes rows where geometry is empty
 
-
-## SECTION 3: PRINT PROGRESS & DATA SUMMARY
-## ============================================================================
+# Print prgress and data
 cat("✓ Downloaded ", nrow(us_counties), " county records\n", sep = "")
 
-# What it does:
-# - nrow(us_counties) counts how many counties (should be 3,233)
-# - sep = "" removes spaces between parts
-# 
-# Output example:
-# ✓ Downloaded 3233 county records
 
 cat("  Geometry type: ", unique(st_geometry_type(us_counties)), "\n", sep = "")
 
-# What it does:
+
 # - st_geometry_type() tells you what kind of shape each row is (POLYGON, MULTIPOLYGON, etc.)
 # - unique() shows only the distinct types (all should be POLYGON or MULTIPOLYGON)
-# 
-# Output example:
-# Geometry type: POLYGON
 
 
-## SECTION 4: SHIFT ALASKA, HAWAII, PUERTO RICO
-## ============================================================================
+
+# was used to shift the states that weren't contiguous but we aren't doing that anymore
 us_counties_shift <- us_counties
 
 
-## SECTION 5: CREATE DIRECTORIES FOR OUTPUTS
-## ============================================================================
+# create directories for outputs
 if (!dir.exists("data_raw")) dir.create("data_raw", recursive = TRUE)
 if (!dir.exists("data_processed")) dir.create("data_processed", recursive = TRUE)
 if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
 
-# What it does:
+
 # - !dir.exists("data_raw"): Checks if folder "data_raw" exists
 # - If FALSE (folder doesn't exist), then dir.create() makes it
-# - recursive = TRUE: Creates parent folders if needed (e.g., if "data" doesn't exist, creates it first)
+# - recursive = TRUE: Creates parent folders if needed 
 #
-# Why do this?
 # - Ensures your project has consistent folder structure for team collaboration
 # - Prevents error "cannot find directory" when saving files
 #
@@ -263,30 +245,19 @@ if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
 # - figures/        (stores final maps and plots)
 
 
-## SECTION 6: SAVE RAW DOWNLOAD TO CACHE
-## ============================================================================
+# Save Raw data
 saveRDS(us_counties, "data_raw/counties_us_tiger.rds")
 
-# What it does:
-# - saveRDS() saves an R object as a .rds binary file
-# - us_counties: the data being saved
-# - "data_raw/counties_us_tiger.rds": file path and name
-#
-# Why do this?
-# - Next time you run this script, tigris will use cached version (instant)
-# - Backup: if tigris fails, you have local copy
-# - Sharing: teammates can load this instead of re-downloading
-#
+# - Next time this script is ran, tigris will use cached version 
 # File format: .rds is R's native binary format
 # - Smaller than CSV (compressed)
 # - Preserves all R object structure (columns, types, spatial info)
 
 
-## SECTION 7: CREATE THE MAP (ggplot2)
-## ============================================================================
+# Create Map 
 map_counties <- ggplot(us_counties_shift) +
   geom_sf(fill = NA, color = "gray30", linewidth = 0.1) +
-  coord_sf(crs = 5070) +
+  coord_sf(crs = 5070) +   #
   theme_void() +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
@@ -333,8 +304,7 @@ map_counties <- ggplot(us_counties_shift) +
 # Result: map_counties is now a ggplot2 object (the visual map)
 
 
-## SECTION 8: SAVE MAP AS PNG IMAGE
-## ============================================================================
+# Save Map as png
 ggsave(
   "figures/01_us_counties_base_map.png",
   plot = map_counties,
