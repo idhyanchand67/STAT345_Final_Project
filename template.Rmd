@@ -185,7 +185,7 @@ hailData <- shp %>%
     #the data set sets all NA values to -9999.000000 so this changes those to NA values
 hailData <- st_transform(hailData, crs = 4326) 
     #Transforms the shape data to a more graph friendly scale
-ggplot(hailData) +
+hData <- ggplot(hailData) +
     #creates the plot
   geom_sf(aes(fill = HAIL_RISKS), color = "black", size = 0.1) +
     #adds the county lines and sets the fill to the hail risk
@@ -196,6 +196,15 @@ ggplot(hailData) +
        fill = "Hail Risk")
     #Adds titles
 
+ggsave(
+  "hailData.png",
+  plot = hData,
+  width = 16,
+  height = 10,
+  dpi = 300,
+  units = "in"
+)
+
 tornadoData <- shp %>%
   filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
     #filters the data by getting rid of any non US territories and Alaska/hawaii
@@ -205,7 +214,7 @@ tornadoData <- shp %>%
     #the data set sets all NA values to -9999.000000 so this changes those to NA values
 tornadoData <- st_transform(tornadoData, crs = 4326)
     #Transforms the shape data to a more graph friendly scale
-ggplot(tornadoData) +
+tData <- ggplot(tornadoData) +
     #creates the plot
   geom_sf(aes(fill = TRND_RISKS), color = "black", size = 0.1) +
     #adds the county lines and sets the fill to the tornado risk
@@ -215,4 +224,35 @@ ggplot(tornadoData) +
   labs(title = "Tornado Risk By County",
        fill = "Tornado Risk")
     #Adds titles to plot
+
+ggsave(
+  "tornadoData.png",
+  plot = tData,
+  width = 16,
+  height = 10,
+  dpi = 300,
+  units = "in"
+)
+
+```
+
+```{r}
+suf <- read.csv("road_suffixes_most_common.csv")
+suf$GEOID <- as.numeric(suf$GEOID)
+counties_us_shift_5070$GEOID <- as.numeric(counties_us_shift_5070$GEOID)
+com <- left_join(counties_us_shift_5070, suf, by = "GEOID")
+roadPlot <- ggplot(com) +
+  geom_sf(aes(fill = SUFFIX), color = "black", size = 0.1)+
+  theme_void()+
+  labs(fill = "Most Common Road Suffix",
+       title = "Most Common Road Suffix By County")
+  
+ggsave(
+  "roadData.png",
+  plot = roadPlot,
+  width = 16,
+  height = 10,
+  dpi = 300,
+  units = "in"
+)
 ```
