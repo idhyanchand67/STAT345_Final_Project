@@ -5,8 +5,8 @@
 #          MD, OH, IN, IL, MI, WI, MN, IA, MO, AR, LA, MS, TN, KY, AL, 
 #          AK, HI, DC (~730 counties)
 #
-# Author: [Person 3 Name]
-# Date: [Date]
+# Author: [Blake]
+# Date: [12/03]
 # ============================================================================
 
 library(sf)

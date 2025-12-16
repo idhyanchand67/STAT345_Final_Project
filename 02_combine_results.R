@@ -3,8 +3,8 @@
 # Purpose: Combine individual state road summaries into one master file
 #          AND identify most common road suffix for each county
 #
-# Author: [Team - Shared Final Step]
-# Date: [Date]
+# Author: [Blake - Shared Final Step]
+# Date: [12/03]
 # Instructions:
 #   1. Wait until all three people have finished processing
 #   2. Run this script (takes ~5 minutes)

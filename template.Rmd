@@ -238,25 +238,7 @@ cat("  Geometry type: ", unique(st_geometry_type(us_counties)), "\n", sep = "")
 
 ## SECTION 4: SHIFT ALASKA, HAWAII, PUERTO RICO
 ## ============================================================================
-us_counties_shift <- shift_geometry(us_counties, 
-                                    preserve_area = FALSE, 
-                                    position = "below")
-
-# What it does:
-# - shift_geometry() repositions AK, HI, PR from their true locations
-#   * TRUE LOCATIONS: Alaska is huge and far northwest; Hawaii is in Pacific
-#   * NEW LOCATIONS: Placed below continental US (inset boxes)
-# 
-# - preserve_area = FALSE: Allows resizing during shift (makes map more readable)
-# - position = "below": Places shifted territories BELOW the main map
-#
-# Why do this?
-# - If you map true locations, Alaska/Hawaii are tiny and far away
-# - Most of your map would be empty ocean
-# - This inset approach is standard for US maps 
-#
-# Result:
-# - Same county boundaries, but repositioned for better visualization
+us_counties_shift <- us_counties
 
 
 ## SECTION 5: CREATE DIRECTORIES FOR OUTPUTS
@@ -318,8 +300,7 @@ map_counties <- ggplot(us_counties_shift) +
 # What it does (piece by piece):
 
 # ggplot(us_counties_shift)
-# - Starts a new ggplot2 plot using the shifted county boundaries
-# - us_counties_shift is the data (3,233 counties)
+# - Starts a new ggplot2 plot using the data
 
 # + geom_sf(fill = NA, color = "gray30", linewidth = 0.1)
 # - geom_sf(): special ggplot2 layer for spatial data (polygons, lines, points)
@@ -474,48 +455,32 @@ library(tidyverse)
 library(leaflet)
 library(ggplot2)
 unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
-  #unzips the NRI data files. files from "https://hazards.fema.gov/nri/data-resources#shpDownload"
 shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
-  #reads the shape file in the zipped folder
 ```
 ```{r}
 
 hailData <- shp %>%
   filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
-    #filters out Hawaii, Alaska, and all us territories 
   select(HAIL_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
-    #Selects the hail risk data and some other useful info
   mutate(HAIL_RISKS = ifelse(HAIL_RISKS < 0, NA, HAIL_RISKS))
-    #Data set has any NA data as a value of -9999.000000 so this changes all of those values to 0
 hailData <- st_transform(hailData, crs = 4326) 
-  #transforms the shape data to a more map friendly format
 ggplot(hailData) +
   geom_sf(aes(fill = HAIL_RISKS), color = "black", size = 0.1) +
-    #adds county lines to the plot and sets the fill of the counties to Hail Risk value
   scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
-    #changes the fill to a gradient from light blue to dark red based on Hail Risk
   theme_void() +
   labs(title = "Hail Risk by County",
        fill = "Hail Risk")
-    #Adds titles
 
 tornadoData <- shp %>%
   filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
-    #filters out Hawaii, Alaska, and all us territories
   select(TRND_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
-    #Selects the tornado data and some other useful info
   mutate(TRND_RISKS = ifelse(TRND_RISKS < 0, NA, TRND_RISKS))
-    #Data set has any NA data as a value of -9999.000000 so this changes all of those values to 0
 tornadoData <- st_transform(tornadoData, crs = 4326)
-  #transforms the shape data to a more map friendly format
 ggplot(tornadoData) +
   geom_sf(aes(fill = TRND_RISKS), color = "black", size = 0.1) +
-    #adds county lines to the plot and sets the fill of the counties to Hail Risk value
   scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
-    #changes the fill to a gradient from light blue to dark red based on Hail Risk
   theme_void() +
   labs(title = "Tornado Risk By County",
        fill = "Tornado Risk")
-    #Adds titles
 
 ```

@@ -3,8 +3,8 @@
 # Purpose: Process Midwest/Central US roads (TX, OK, KS, NE, SD, ND, CO, WY, MT)
 #          ~500 counties total
 #
-# Author: [Person 2 Name]
-# Date: [Date]
+# Author: [Blake]
+# Date: [12/03]
 # ============================================================================
 
 library(sf)
