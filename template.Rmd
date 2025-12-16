@@ -424,33 +424,52 @@ library(dplyr)
 library(tidyverse)
 library(leaflet)
 library(ggplot2)
+# Zip file gotten from "https://hazards.fema.gov/nri/data-resources#shpDownload". Use the "All Counties - County-level detail (Shapefile)" data set
 unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
+  #unzips the zip file containing the shape files and creates a temporary directory to read from
 shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
+  #read the temp_shp file from the un-zipped zip file
 ```
 ```{r}
 
 hailData <- shp %>%
   filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
+    #filters the data by getting rid of any non US territories and Alaska/hawaii
+    #02 is in quotations because it is a character but when 02 was entered it read it as a number so it read it a 2 and would not filter it out
   select(HAIL_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
+    #selects the hail risks data along with other important data
   mutate(HAIL_RISKS = ifelse(HAIL_RISKS < 0, NA, HAIL_RISKS))
+    #the data set sets all NA values to -9999.000000 so this changes those to NA values
 hailData <- st_transform(hailData, crs = 4326) 
+    #Transforms the shape data to a more graph friendly scale
 ggplot(hailData) +
+    #creates the plot
   geom_sf(aes(fill = HAIL_RISKS), color = "black", size = 0.1) +
+    #adds the county lines and sets the fill to the hail risk
   scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
+    #changes the fill to a gradient
   theme_void() +
   labs(title = "Hail Risk by County",
        fill = "Hail Risk")
+    #Adds titles
 
 tornadoData <- shp %>%
   filter(!STATEFIPS %in% c(78, 72, 69, 66, 60, 15, "02"))%>%
+    #filters the data by getting rid of any non US territories and Alaska/hawaii
   select(TRND_RISKS,NRI_ID,COUNTYFIPS,COUNTY,STCOFIPS)%>%
+    #selects the tornado risk data along with other important data
   mutate(TRND_RISKS = ifelse(TRND_RISKS < 0, NA, TRND_RISKS))
+    #the data set sets all NA values to -9999.000000 so this changes those to NA values
 tornadoData <- st_transform(tornadoData, crs = 4326)
+    #Transforms the shape data to a more graph friendly scale
 ggplot(tornadoData) +
+    #creates the plot
   geom_sf(aes(fill = TRND_RISKS), color = "black", size = 0.1) +
+    #adds the county lines and sets the fill to the tornado risk
   scale_fill_gradient(low = "lightblue", high = "darkred", na.value = "grey80") +
+    #changes the fill to a gradient
   theme_void() +
   labs(title = "Tornado Risk By County",
        fill = "Tornado Risk")
-
+    #Adds titles to plot
 ```
