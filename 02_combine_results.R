@@ -14,9 +14,8 @@
 library(dplyr)
 library(tidyr)
 
-cat("========================================\n")
-cat("STEP 2: Combining Road Results\n")
-cat("========================================\n\n")
+cat("Combining Road Results\n")
+
 
 cat("Looking for individual state CSV files in data_processed/...\n\n")
 
@@ -80,9 +79,7 @@ cat("✓ Created county-level summary\n")
 cat("  Rows: ", nrow(most_common_suffix), "\n", sep = "")
 cat("  Columns: ", paste(names(most_common_suffix), collapse = ", "), "\n\n", sep = "")
 
-# ============================================================================
-# Save comprehensive results
-# ============================================================================
+
 
 cat("Saving results...\n")
 
@@ -119,10 +116,4 @@ print(all_roads %>%
   arrange(desc(TOTAL_COUNT)) %>%
   head(20))
 
-cat("\n")
-cat("========================================\n")
-cat("STEP 2 COMPLETE!\n")
-cat("========================================\n")
-cat("Ready for Step 3: Merge with counties and create final map\n")
-cat("Run: R/03_merge_and_map.R\n")
-cat("========================================\n")
+
