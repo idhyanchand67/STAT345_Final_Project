@@ -454,6 +454,7 @@ library(dplyr)
 library(tidyverse)
 library(leaflet)
 library(ggplot2)
+# Zip file gotten from "https://hazards.fema.gov/nri/data-resources#shpDownload". Use the "All Counties - County-level detail (Shapefile)" data set
 unzip("NRI_Shapefile_Counties.zip", exdir = "temp_shp")
   #unzips the zip file containing the shape files and creates a temporary directory to read from
 shp <- st_read("temp_shp/NRI_Shapefile_Counties.shp")
