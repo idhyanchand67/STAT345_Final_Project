@@ -159,30 +159,6 @@ roads_sf <- sf::st_read(shp[1], quiet = TRUE)
 
 3. _Putting it Together_ Merge the county shape files with your county-level summaries. The main plot to create for the project is to color your map from step 1 based on the most common road suffix (summary from step 2). Beyond this plot, feel free to be creative when making at least two additional plots.
 
-
-```{r}
-library(leaflet)
-
-# Convert counties to WGS84 (leaflet requires this)
-us_counties_wgs84 <- st_transform(us_counties_shift, crs = 4326)
-
-# Create interactive map
-map_leaflet <- leaflet(us_counties_wgs84) %>%
-  addTiles() %>%  # Add background map tiles (OpenStreetMap)
-  addPolygons(
-    color = "gray30",
-    weight = 0.5,
-    fillOpacity = 0.1,
-    popup = ~NAME  # Click county to see its name
-  )
-
-# Display
-map_leaflet
-
-
-
-
-```
 ## Section Four
 
 ```{r student4}
